@@ -3,7 +3,7 @@
 // 프록시(/api → 8080) & 절대경로(.env) 모두 지원
 // - VITE_API_BASE_URL 없으면: Vite dev proxy 사용 (/api → 백엔드)
 // - 있으면: 그 값을 BASE로 사용 (예: http://localhost:8080)
-// 공통 유틸 + 로그인, 회원가입, 인증 요청 함수 제공
+// 공통 유틸 + 로그인, 회원가입, 이메일 인증, 인증 필요 호출
 // ──────────────────────────────────────────────────────────────
 
 // BASE 설정 ----------------------------------------------------
@@ -77,9 +77,7 @@ export function clearToken() {
 export async function login({ email, password }) {
   const body = JSON.stringify({ email, password });
 
-  const candidates = [
-    buildUrl('/api/auth/login')
-  ];
+  const candidates = [buildUrl("/api/auth/login")];
 
   let lastErr = "로그인 실패";
 
@@ -123,7 +121,7 @@ export async function login({ email, password }) {
   return { ok: false, error: lastErr };
 }
 
-
+// ── API: 회원가입 ─────────────────────────────────────────────
 export async function signup({
   email,
   password,
@@ -137,9 +135,7 @@ export async function signup({
     phoneNumber,
   });
 
-  const candidates = [
-    buildUrl('/api/auth/signup'),
-  ];
+  const candidates = [buildUrl("/api/auth/signup")];
   let lastErr = "회원가입 실패";
 
   for (const url of candidates) {
@@ -180,6 +176,72 @@ export async function signup({
   }
 
   return { ok: false, error: lastErr };
+}
+
+// ── API: 이메일 인증 코드 발송 ────────────────────────────────
+// 프론트: sendEmailCode(email)
+export async function sendEmailCode(email) {
+  const body = JSON.stringify({ email });
+  const url = buildUrl("/api/auth/email/send");
+  let lastErr = "인증 코드 발송 실패";
+
+  try {
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      },
+      10000
+    );
+
+    const data = await safeJson(res);
+    if (!res.ok) {
+      lastErr =
+        (data && (data.message || data.error)) ||
+        `HTTP ${res.status} at ${url}`;
+      return { ok: false, error: lastErr, data, used: url };
+    }
+
+    return { ok: true, data, used: url };
+  } catch (e) {
+    lastErr = e?.message || "네트워크 오류";
+    return { ok: false, error: lastErr, used: url };
+  }
+}
+
+// ── API: 이메일 인증 코드 검증 ────────────────────────────────
+// 프론트: verifyEmailCode({ email, code })
+export async function verifyEmailCode({ email, code }) {
+  const body = JSON.stringify({ email, code });
+  const url = buildUrl("/api/auth/email/verify");
+  let lastErr = "이메일 인증 실패";
+
+  try {
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      },
+      10000
+    );
+
+    const data = await safeJson(res);
+    if (!res.ok) {
+      lastErr =
+        (data && (data.message || data.error)) ||
+        `HTTP ${res.status} at ${url}`;
+      return { ok: false, error: lastErr, data, used: url };
+    }
+
+    return { ok: true, data, used: url };
+  } catch (e) {
+    lastErr = e?.message || "네트워크 오류";
+    return { ok: false, error: lastErr, used: url };
+  }
 }
 
 // ── API: 인증 필요 호출 ──────────────────────────────────────

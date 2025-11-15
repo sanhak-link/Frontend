@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { signup } from "./lib/api.js";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { signup, sendEmailCode, verifyEmailCode } from "./lib/api.js";
 
-// 회원가입 화면 레이아웃을 그대로 출력합니다.
 export default function Register() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: '',
-    phoneNumber: '',
-    email: '',
-    password: '',
+    name: "",
+    phoneNumber: "",
+    email: "",
+    emailCode: "",
+    password: "",
+    isEmailVerified: false,
   });
-  const [err, setErr] = useState('');
+
+  const [msg, setMsg] = useState("");
+  const [emailSendLoading, setEmailSendLoading] = useState(false);
+  const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onChange = (e) => {
@@ -20,255 +24,437 @@ export default function Register() {
     setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const validate = () => {
-    if (!form.name.trim()) return '이름을 입력하세요.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return '이메일 형식이 올바르지 않습니다.';
-    if (form.password.length < 6) return '비밀번호는 6자 이상이어야 합니다.';
-    return null;
+  // 인증코드 보내기 (api.js sendEmailCode 사용)
+  const handleSendEmailCode = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setMsg("올바른 이메일을 입력하세요.");
+      return;
+    }
+
+    setEmailSendLoading(true);
+    setMsg("");
+
+    const res = await sendEmailCode(form.email);
+
+    if (!res.ok) {
+      setMsg(res.error || "인증 코드 발송 실패");
+    } else {
+      setMsg("인증 코드가 발송되었습니다.");
+    }
+    setEmailSendLoading(false);
   };
 
-  const onSubmit = async (e) => {
-  e.preventDefault();
-  const v = validate();
-  if (v) return setErr(v);
-  setErr("");
-  setLoading(true);
+  // 인증코드 확인 (api.js verifyEmailCode 사용)
+  const handleVerifyEmailCode = async () => {
+    if (!form.emailCode.trim()) {
+      setMsg("인증 코드를 입력하세요.");
+      return;
+    }
 
-  try {
-    const res = await signup({
+    setEmailVerifyLoading(true);
+    setMsg("");
+
+    const res = await verifyEmailCode({
       email: form.email,
-      password: form.password,
-      name: form.name,
-      phoneNumber: form.phoneNumber || undefined,
-      managementCode: form.managementCode || undefined,
+      code: form.emailCode,
     });
 
     if (!res.ok) {
-      setErr(res.error || "회원가입에 실패했습니다.");
-      return;
+      setMsg(res.error || "인증 실패");
+    } else {
+      setForm((p) => ({ ...p, isEmailVerified: true }));
+      setMsg("✔ 이메일 인증이 완료되었습니다.");
     }
-    navigate("/main-page");
-  } catch (e) {
-    setErr(e?.message || "네트워크 오류");
-  } finally {
-    setLoading(false);
-  }
-};
+    setEmailVerifyLoading(false);
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.name.trim()) return setMsg("이름을 입력하세요.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      return setMsg("이메일 형식이 올바르지 않습니다.");
+    if (!form.isEmailVerified) return setMsg("이메일 인증을 완료해주세요.");
+    if (form.password.length < 6)
+      return setMsg("비밀번호는 6자 이상이어야 합니다.");
+
+    setLoading(true);
+    setMsg("");
+
+    try {
+      const res = await signup({
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        phoneNumber: form.phoneNumber,
+      });
+
+      if (!res.ok) {
+        setMsg(res.error || "회원가입에 실패했습니다.");
+      } else {
+        navigate("/main-page");
+      }
+    } catch {
+      setMsg("네트워크 오류");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
       style={{
         width: 1280,
         height: 800,
-        position: 'relative',
-        background: 'white',
-        overflow: 'hidden',
-        margin: '0 auto',
-        fontFamily:
-          'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif',
+        position: "relative",
+        background: "white",
+        overflow: "hidden",
       }}
     >
-      <Link
-        to="/"
-        style={{
-          position: 'absolute',
-          top: 24,
-          right: 32,
-          padding: '10px 18px',
-          borderRadius: 999,
-          border: '1px solid #d9d9d9',
-          background: 'white',
-          cursor: 'pointer',
-          textDecoration: 'none',
-          color: '#111',
-          zIndex: 1,
-        }}
-      >
-        홈으로 돌아가기
-      </Link>
-
+      {/* 연보라 패널 */}
       <div
         style={{
           width: 400,
-          height: 607,
+          height: 730,
           left: 451,
-          top: 96,
-          position: 'absolute',
-          background: 'rgba(78, 95, 208, 0.30)',
+          top: 24,
+          position: "absolute",
+          background: "rgba(78.13, 95.49, 208.34, 0.30)",
           borderRadius: 20,
         }}
       />
 
-      {/* 입력 폼: 위치/크기/정렬 그대로 유지 */}
+      {/* 타이틀 */}
+      <div
+        style={{
+          width: 211,
+          height: 44,
+          left: 598,
+          top: 41,
+          position: "absolute",
+          color: "black",
+          fontSize: 27,
+          fontFamily: "Pretendard",
+          fontWeight: "700",
+          wordWrap: "break-word",
+        }}
+      >
+        회원가입
+      </div>
+
+      {/* 폼 전체 */}
       <form
+        id="register-form"
         onSubmit={onSubmit}
         style={{
           width: 329,
           height: 438,
           left: 486,
-          top: 163,
-          position: 'absolute',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          top: 150,
+          position: "absolute",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           gap: 16,
+          display: "inline-flex",
+          fontFamily: "Pretendard",
         }}
       >
-        <FormField
-          label="이름"
-          name="name"
-          value={form.name}
-          onChange={onChange}
-          placeholder="이름을 입력하세요"
-        />
-        <FormField
-          label="전화번호"
-          name="phoneNumber"
-          value={form.phoneNumber}
-          onChange={onChange}
-          placeholder="숫자만 입력 (선택)"
-        />
-        <FormField
-          label="이메일"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={onChange}
-          placeholder="example@domain.com"
-        />
-        <FormField
-          label="비밀번호"
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={onChange}
-          placeholder="비밀번호(6자 이상)"
-        />
+        {/* 이름 */}
+        <Field label="이름">
+          <Input name="name" value={form.name} onChange={onChange} />
+        </Field>
 
-        {/* 에러 메시지: 레이아웃 흔들림 최소화 */}
-        {err ? (
-          <div style={{ width: 320, color: '#c00', fontSize: 14, textAlign: 'left' }}>{err}</div>
-        ) : (
-          <div style={{ width: 320, height: 0 }} />
+        {/* 전화번호 */}
+        <Field label="전화번호">
+          <Input
+            name="phoneNumber"
+            value={form.phoneNumber}
+            onChange={onChange}
+          />
+        </Field>
+
+        {/* 이메일 */}
+        <Field label="이메일">
+          <Input
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={onChange}
+          />
+        </Field>
+
+        {/* 인증 코드 보내기 버튼 */}
+        <button
+          type="button"
+          onClick={emailSendLoading ? undefined : handleSendEmailCode}
+          style={{
+            width: 320,
+            height: 30,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingTop: 15,
+            paddingBottom: 15,
+            background: "#7658E4",
+            overflow: "hidden",
+            borderRadius: 6,
+            justifyContent: "flex-start",
+            alignItems: "center",
+            gap: 10,
+            display: "inline-flex",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "Pretendard",
+          }}
+        >
+          <div
+            style={{
+              textAlign: "right",
+              color: "white",
+              fontSize: 16,
+              fontFamily: "Pretendard",
+              fontWeight: "600",
+              wordWrap: "break-word",
+            }}
+          >
+            {emailSendLoading
+              ? "발송 중..."
+              : "                        인증 코드 보내기"}
+          </div>
+        </button>
+
+        {/* 인증 코드 */}
+        <div
+          data-property-1="Email_Box"
+          style={{
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            alignItems: "flex-start",
+            gap: 8,
+            display: "flex",
+          }}
+        >
+          <div
+            style={{
+              color: "rgba(0, 0, 0, 0.85)",
+              fontSize: 16,
+              fontFamily: "Pretendard",
+              fontWeight: "600",
+              wordWrap: "break-word",
+            }}
+          >
+            인증 코드
+          </div>
+          <div
+            style={{
+              width: 320,
+              height: 50,
+              paddingLeft: 16,
+              paddingRight: 16,
+              paddingTop: 15,
+              paddingBottom: 15,
+              background: "#F5F5F5",
+              overflow: "hidden",
+              borderRadius: 6,
+              justifyContent: "flex-start",
+              alignItems: "center",
+              gap: 10,
+              display: "inline-flex",
+            }}
+          >
+            <input
+              name="emailCode"
+              value={form.emailCode}
+              onChange={onChange}
+              placeholder="메일로 받은 코드를 입력해주세요"
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontSize: 16,
+                fontFamily: "Pretendard",
+                fontWeight: "500",
+                color: "#111",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 인증 확인 버튼 */}
+        <button
+          type="button"
+          onClick={emailVerifyLoading ? undefined : handleVerifyEmailCode}
+          style={{
+            width: 320,
+            height: 30,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingTop: 15,
+            paddingBottom: 15,
+            background: "#7658E4",
+            overflow: "hidden",
+            borderRadius: 6,
+            justifyContent: "flex-start",
+            alignItems: "center",
+            gap: 10,
+            display: "inline-flex",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "Pretendard",
+          }}
+        >
+          <div
+            style={{
+              textAlign: "right",
+              color: "white",
+              fontSize: 16,
+              fontFamily: "Pretendard",
+              fontWeight: "600",
+              wordWrap: "break-word",
+            }}
+          >
+            {emailVerifyLoading
+              ? "확인 중..."
+              : "                              인증 확인"}
+          </div>
+        </button>
+
+        {/* 비밀번호 */}
+        <Field label=" 비밀번호">
+          <Input
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            placeholder="••••••••"
+          />
+        </Field>
+
+        {/* 메시지 */}
+        {msg && (
+          <div
+            style={{
+              width: 320,
+              color: form.isEmailVerified ? "#1C9A36" : "#c00",
+              fontSize: 14,
+              fontFamily: "Pretendard",
+            }}
+          >
+            {msg}
+          </div>
         )}
       </form>
 
+      {/* 가입하기 버튼 */}
       <div
-        style={{
-          width: 295,
-          height: 44,
-          left: 491,
-          top: 118,
-          position: 'absolute',
-          color: 'black',
-          fontSize: 25,
-          fontWeight: 700,
-          lineHeight: '32px',
-        }}
-      >
-        시스템 사용을 위해
-        <br />
-        정보를 입력해주세요.
-      </div>
-
-      {/* 제출 버튼: 동일 위치/사이즈, 버튼 엘리먼트로 교체 */}
-      <button
-        type="submit"
-        form="" // 폼과 같은 DOM 내에 있으므로 기본적으로 가장 가까운 form으로 제출됨
-        onClick={(e) => {
-          // 일부 브라우저에서 form 연결이 불안하면 강제로 가장 가까운 form submit
-          const f = e.currentTarget.closest('div')?.querySelector('form');
+        onClick={() => {
+          const f = document.getElementById("register-form");
           if (f) f.requestSubmit();
         }}
-        disabled={loading}
         style={{
           width: 320,
-          height: 50,
+          height: 40,
           paddingLeft: 16,
           paddingRight: 16,
           paddingTop: 15,
           paddingBottom: 15,
           left: 491,
-          top: 594,
-          position: 'absolute',
-          background: '#096BC7',
+          top: 663,
+          position: "absolute",
+          background: "#096BC7",
+          overflow: "hidden",
           borderRadius: 6,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: "flex-start",
+          alignItems: "center",
           gap: 10,
-          border: 'none',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          opacity: loading ? 0.7 : 1,
+          display: "inline-flex",
+          cursor: loading ? "not-allowed" : "pointer",
         }}
       >
         <div
           style={{
-            textAlign: 'center',
-            color: 'white',
+            textAlign: "right",
+            color: "white",
             fontSize: 16,
-            fontWeight: 600,
+            fontFamily: "Pretendard",
+            fontWeight: "600",
+            wordWrap: "break-word",
           }}
         >
-          {loading ? '처리 중…' : '가입하기'}
+          {loading
+            ? "                               처리 중..."
+            : "                               가입하기"}
         </div>
-      </button>
+        <div style={{ width: 100, height: 100, position: "relative" }} />
+      </div>
     </div>
   );
 }
 
-function FormField({ label, name, value = '', onChange, type = 'text', placeholder = '' }) {
+/* 이름/전화번호/이메일/비밀번호용 필드 */
+function Field({ label, children }) {
   return (
     <div
+      data-property-1="Email_Box"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
-        alignItems: 'flex-start',
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        alignItems: "flex-start",
         gap: 8,
-        width: '100%',
+        display: "flex",
       }}
     >
       <div
         style={{
-          color: 'rgba(0, 0, 0, 0.85)',
+          color: "rgba(0, 0, 0, 0.85)",
           fontSize: 16,
-          fontWeight: 600,
+          fontFamily: "Pretendard",
+          fontWeight: "600",
+          wordWrap: "break-word",
         }}
       >
         {label}
       </div>
-      <div
+      {children}
+    </div>
+  );
+}
+
+function Input({ placeholder, ...rest }) {
+  return (
+    <div
+      style={{
+        width: 320,
+        height: 50,
+        paddingLeft: 16,
+        paddingRight: 16,
+        paddingTop: 15,
+        paddingBottom: 15,
+        background: "#F5F5F5",
+        borderRadius: 6,
+        justifyContent: "flex-start",
+        alignItems: "center",
+        gap: 10,
+        display: "inline-flex",
+      }}
+    >
+      <input
+        {...rest}
+        placeholder={placeholder}
         style={{
-          width: 320,
-          height: 50,
-          padding: '15px 16px',
-          background: '#F5F5F5',
-          borderRadius: 6,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
+          width: "100%",
+          height: "100%",
+          border: "none",
+          outline: "none",
+          background: "transparent",
+          fontSize: 16,
+          fontFamily: "Pretendard",
+          fontWeight: "500",
+          color: "#111",
         }}
-      >
-        <input
-          name={name}
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          style={{
-            width: '100%',
-            height: '100%',
-            outline: 'none',
-            border: 'none',
-            background: 'transparent',
-            fontSize: 16,
-            fontWeight: 500,
-            color: '#111',
-          }}
-        />
-      </div>
+      />
     </div>
   );
 }
