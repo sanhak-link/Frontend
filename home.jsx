@@ -265,7 +265,7 @@ export default function Home() {
           top: 17,
           position: 'absolute',
         }}
-        src="https://placehold.co/183x76"
+        src="image_file\police.png"
         alt="SmartShield 로고"
       />
     </div>
