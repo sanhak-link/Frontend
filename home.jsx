@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import Button from "./src/components/button.jsx";
 import { login } from "./src/lib/api.js";
 
-
 export default function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -27,8 +26,8 @@ export default function Home() {
       setErrorMsg(res.error || '로그인에 실패했습니다.');
       return;
     }
-    // 성공 → 메인으로 이동
-    navigate('/main-page'); 
+    // 성공 → 기존 대시보드(main-page)로 이동
+    navigate('/main-page');
   }
 
   return (
@@ -174,69 +173,69 @@ export default function Home() {
         )}
       </form>
 
-<div
-  style={{
-    width: 322,
-    left: 472,
-    top: 516,
-    position: 'absolute',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 12,
-  }}
->
-  {/* 로그인 */}
-  <Button
-    type="submit"
-    variant="ghost"
-    size="md"
-    fullWidth
-    loading={isSubmitting}
-    disabled={isSubmitting}
-    onClick={() => {
-      const formEl = document.getElementById('loginForm');
-      if (formEl?.requestSubmit) formEl.requestSubmit();
-      else formEl?.submit();
-    }}
-    style={{
-      width: '100%',
-      height: 65,
-      padding: '15px 123px',
-      background: '#096BC7',
-      borderRadius: 6,
-      color: 'white',
-      fontSize: 16,
-      fontWeight: 600,
-      border: 'none',
-    }}
-  >
-    로그인
-  </Button>
+      <div
+        style={{
+          width: 322,
+          left: 472,
+          top: 516,
+          position: 'absolute',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        {/* 로그인 */}
+        <Button
+          type="submit"
+          variant="ghost"
+          size="md"
+          fullWidth
+          loading={isSubmitting}
+          disabled={isSubmitting}
+          onClick={() => {
+            const formEl = document.getElementById('loginForm');
+            if (formEl?.requestSubmit) formEl.requestSubmit();
+            else formEl?.submit();
+          }}
+          style={{
+            width: '100%',
+            height: 65,
+            padding: '15px 123px',
+            background: '#096BC7',
+            borderRadius: 6,
+            color: 'white',
+            fontSize: 16,
+            fontWeight: 600,
+            border: 'none',
+          }}
+        >
+          로그인
+        </Button>
 
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-    <div style={{ color: '#888888', fontSize: 14, fontWeight: 500 }}>
-      계정이 없으신가요?
-    </div>
-    <Link
-      to="/register"
-      style={{
-        padding: '10px 18px',
-        background: '#096BC7',
-        borderRadius: 6,
-        textDecoration: 'none',
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 600,
-        display: 'inline-flex',
-        border: 'none',
-        cursor: 'pointer',
-      }}
-    >
-      계정 등록
-    </Link>
-  </div>
-</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ color: '#888888', fontSize: 14, fontWeight: 500 }}>
+            계정이 없으신가요?
+          </div>
+          <Link
+            to="/register"
+            style={{
+              padding: '10px 18px',
+              background: '#096BC7',
+              borderRadius: 6,
+              textDecoration: 'none',
+              color: 'white',
+              fontSize: 16,
+              fontWeight: 600,
+              display: 'inline-flex',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            계정 등록
+          </Link>
+        </div>
+      </div>
 
       {/*메인*/}
       <div
@@ -265,7 +264,7 @@ export default function Home() {
           top: 17,
           position: 'absolute',
         }}
-        src="image_file\police.png"
+        src="image_file/police.png"
         alt="SmartShield 로고"
       />
     </div>

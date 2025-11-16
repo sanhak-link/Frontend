@@ -33,13 +33,15 @@ async function safeJson(res) {
 }
 
 // path로부터 실제 요청 URL 생성
+// [수정됨] USE_PROXY일 때 자동으로 /api를 붙여줍니다.
 function buildUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
   if (USE_PROXY) {
-    // dev 환경: 프론트는 /api로 호출, Vite가 백엔드로 프록시
+    // dev 환경 또는 cPanel 프록시 사용 시:
+    // 이미 path에 /api가 들어있다면 중복해서 붙이지 않음
     return p.startsWith("/api/") ? p : `/api${p}`;
   }
-  // 절대 BASE 사용 시
+  // 절대 BASE 사용 시 (.env에 주소가 있을 때)
   return `${ABS_BASE}${p}`;
 }
 
@@ -78,7 +80,9 @@ export async function login({ email, password }) {
   const body = JSON.stringify({ email, password });
 
   const candidates = [
-    buildUrl('/api/auth/login')
+    // [수정 완료] '/api'를 제거했습니다. buildUrl이 자동으로 붙여줍니다.
+    // 결과적으로 요청 주소는 /api/auth/login 이 됩니다.
+    buildUrl('/auth/login')
   ];
 
   let lastErr = "로그인 실패";
@@ -138,7 +142,8 @@ export async function signup({
   });
 
   const candidates = [
-    buildUrl('/api/auth/signup'),
+    // [수정 완료] '/api'를 제거했습니다.
+    buildUrl('/auth/signup'),
   ];
   let lastErr = "회원가입 실패";
 
